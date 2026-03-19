@@ -13,6 +13,9 @@ python manage.py migrate --noinput
 echo "Criando grupos e usuários de exemplo..."
 python manage.py seed_groups --create-users
 
+echo "Criando caminhões de exemplo..."
+python manage.py seed_trucks
+
 if [ -n "$SUPERUSER_USERNAME" ] && [ -n "$SUPERUSER_EMAIL" ] && [ -n "$SUPERUSER_PASSWORD" ]; then
   echo "Criando superusuário..."
   DJANGO_SUPERUSER_PASSWORD="$SUPERUSER_PASSWORD" python manage.py createsuperuser \
