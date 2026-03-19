@@ -1,4 +1,4 @@
-# TruckFlow Backend
+# TruckFlow truck_flow_backend
 
 API REST para gerenciamento de caminhões, integrada à tabela FIPE para consulta de preços. Desenvolvida com **Django** e **Django REST Framework**, seguindo **Clean Architecture**.
 
@@ -6,7 +6,7 @@ API REST para gerenciamento de caminhões, integrada à tabela FIPE para consult
 
 ## O que é o projeto
 
-O TruckFlow Backend é a API do sistema TruckFlow, responsável por:
+O TruckFlow truck_flow_backend é a API do sistema TruckFlow, responsável por:
 
 - **CRUD de caminhões** (cadastro, listagem, atualização e exclusão)
 - **Integração com a FIPE** para consulta de preços e dados de marcas/modelos/anos
@@ -135,13 +135,13 @@ A porta padrão é **3000** (configurável via `HOST_PORT` no `.env`).
 
 ---
 
-## Como rodar o backend
+## Como rodar o truck_flow_backend
 
 Existem **duas maneiras** de rodar o projeto:
 
-| Opção | Descrição |
-| ----- | --------- |
-| **1. Com Docker** | Para quem tem Docker instalado |
+| Opção                          | Descrição                       |
+| ------------------------------ | ------------------------------- |
+| **1. Com Docker**              | Para quem tem Docker instalado  |
 | **2. Windows 11 (sem Docker)** | Instalação manual no Windows 11 |
 
 ---
@@ -150,10 +150,10 @@ Existem **duas maneiras** de rodar o projeto:
 
 Para quem já possui **Docker** e **Docker Compose** instalados.
 
-1. Entre na pasta do backend:
+1. Entre na pasta do truck_flow_backend:
 
 ```bash
-cd backend
+cd truck_flow_backend
 ```
 
 2. Configure o `.env` (opcional; há valores padrão):
@@ -180,7 +180,7 @@ O entrypoint executa automaticamente: aguarda o PostgreSQL, migrações, usuári
 Para rodar no **Windows 11 sem Docker**, siga a seção [Instalação](#instalação) acima. Resumo:
 
 1. Instale **Python 3.11+** e **PostgreSQL** (ou use SQLite com `DB_PROVIDER=sqlite`)
-2. No **PowerShell** ou **Terminal**, entre na pasta do backend e execute:
+2. No **PowerShell** ou **Terminal**, entre na pasta do truck_flow_backend e execute:
 
 ```powershell
 pip install -r requirements.txt
@@ -220,7 +220,7 @@ docker compose up -d --build
 docker compose down
 
 # Ver logs
-docker compose logs -f backend
+docker compose logs -f truck_flow_backend
 ```
 
 ---
@@ -279,7 +279,7 @@ python manage.py test
 ## Estrutura de pastas
 
 ```
-backend/
+truck_flow_backend/
 ├── config/              # Configuração Django (settings, urls, env)
 ├── core/                # Modelos base (UUIDModel)
 ├── apps/                # Módulos da aplicação
@@ -290,7 +290,7 @@ backend/
 ├── manage.py
 ├── run.py               # Inicia o servidor
 ├── Dockerfile           # Build da imagem Docker
-├── docker-compose.yml   # Orquestração Docker (backend + PostgreSQL)
+├── docker-compose.yml   # Orquestração Docker (truck_flow_backend + PostgreSQL)
 ├── entrypoint.sh        # Script de inicialização no container
 ├── requirements.txt
 ├── pyproject.toml       # Config Black/Ruff
