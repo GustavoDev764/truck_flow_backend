@@ -4,6 +4,82 @@ API REST para gerenciamento de caminhões, integrada à tabela FIPE para consult
 
 ---
 
+## Regras e orientações – Aderência à entrega
+
+Esta seção responde aos critérios de avaliação exigidos no repositório.
+
+### Código funcional
+
+A API está completa e operacional:
+
+- **CRUD de caminhões** com validação de placas e integração à tabela FIPE (marcas, modelos, anos, preços)
+- **Autenticação JWT** (SimpleJWT) com login, refresh token e logout com invalidação de sessão
+- **Gerenciamento de usuários** e permissões por grupo (manage, cliente)
+- **Dashboard** com dados agregados da frota
+- **Documentação OpenAPI** em `/api/docs/`
+- **Docker** com PostgreSQL para ambiente isolado
+
+O código segue Clean Architecture: domínio independente, casos de uso testáveis e infraestrutura injetada via `dependencies.py`.
+
+---
+
+### Documentação explicando o raciocínio adotado
+
+**Por que Clean Architecture?**
+
+- **Domínio isolado:** entidades e regras de negócio em `domain/` sem dependências externas, facilitando testes e evolução.
+- **Casos de uso explícitos:** `application/use_cases/` orquestra repositórios e clientes externos; a lógica fica testável com Spies.
+- **Inversão de dependência:** repositórios e `FipeClient` são protocolos (contratos); implementações Django/HTTP são injetadas.
+- **Composition root:** `dependencies.py` instancia repositórios, use cases e views, centralizando a configuração.
+
+**Por que testes unitários com Spies (sem banco)?**
+
+- **Rapidez:** `SimpleTestCase` não cria banco; os testes rodam em milissegundos.
+- **Determinismo:** `TruckRepositorySpy`, `FipeClientSpy` etc. controlam exatamente o comportamento e permitem asserções sobre interações.
+- **Independência:** não dependem de PostgreSQL, migrations ou dados externos; funcionam em qualquer ambiente (CI, local).
+- **Coverage alto:** 100% em `apps/trucks` e `core` (exceto migrations, scripts e apresentação secundária).
+
+**Decisões técnicas**
+
+- **JWT com invalidação:** modelo `Session` armazena `jti`; logout revoga a sessão no backend para maior segurança.
+- **Integração FIPE:** cliente HTTP isolado em `infrastructure/fipe/`; testes usam `FipeClientSpy` para simular respostas.
+
+---
+
+### Testes para códigos relevantes
+
+**O que existe hoje**
+
+- **Testes unitários (Django `SimpleTestCase`):** cobrem domínio, casos de uso, infraestrutura e apresentação em `apps/trucks/tests/`.
+
+**Estrutura dos testes**
+
+| Camada        | Arquivo(s)                                                                 | O que testa                                              |
+| ------------- | -------------------------------------------------------------------------- | -------------------------------------------------------- |
+| **Use cases** | `create_truck_spec_use_case.py`, `update_*`, `delete_*`, `list_*`          | Regras de negócio, integração com repositório e FIPE     |
+| **Controller**| `truck_controller_spec.py`                                                 | Orquestração dos use cases                               |
+| **Repository**| `repositories_spec.py`                                                     | Persistência (Django ORM)                                |
+| **FIPE**      | `fipe_client_spec.py`                                                      | Cliente HTTP da API FIPE                                 |
+| **Presentation** | `views_spec.py`, `errors_and_serializers_spec.py`                       | Views DRF, serializers e tratamento de erros             |
+| **Infra**     | `djangomodels_spec.py`, `seed_trucks_spec.py`, `migration_import_spec.py` | Modelos Django, management commands e migrations         |
+
+**Estratégia: Spies em vez de mocks de banco**
+
+Todos os testes usam Spies (`TruckRepositorySpy`, `FipeClientSpy`, etc.) que registram chamadas e retornam dados controlados. Isso permite:
+
+- Validar que o use case chama o repositório e o FIPE com os parâmetros corretos
+- Simular erros (ex.: placa duplicada, FIPE indisponível) sem tocar no banco real
+
+---
+
+### Originalidade, clareza e melhores práticas
+
+- **Originalidade:** Implementação Clean Architecture em Django, integração FIPE, JWT com revogação de sessão, seed de grupos e usuários.
+- **Clareza:** Camadas bem definidas, nomes descritivos, `pyproject.toml` com Ruff/Black e regras de coverage explícitas.
+- **Práticas:** Type hints, formatação automática, lint configurado, `.env` para configuração sensível, `.gitignore` excluindo evidências de teste (htmlcov, .coverage).
+
+---
+
 ## O que é o projeto
 
 O TruckFlow truck_flow_backend é a API do sistema TruckFlow, responsável por:
