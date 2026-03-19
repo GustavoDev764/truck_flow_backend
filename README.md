@@ -191,6 +191,9 @@ SUPERUSER_PASSWORD=minha_senha
 # Subir em background
 docker compose up -d --build
 
+# Descer containers
+docker compose down
+
 # Ver logs
 docker compose logs -f backend
 ```
