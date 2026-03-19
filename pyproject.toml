@@ -59,3 +59,17 @@ known-first-party = ["apps.accounts", "apps.trucks", "config", "core"]
 quote-style = "double"
 skip-magic-trailing-comma = false
 line-ending = "auto"
+
+[tool.coverage.run]
+omit = [
+    "manage.py",
+    "config/*",
+    "*/migrations/*",
+    "*/tests/*",
+    "scripts/*",
+    "apps/trucks/management/commands/seed_groups.py",
+    "apps/trucks/presentation/dashboard_views.py",
+    "apps/accounts/*",
+    "apps/trucks/infrastructure/fipe/client.py",
+]
+source = ["apps", "core"]

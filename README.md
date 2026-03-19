@@ -270,25 +270,27 @@ black .
 
 ### Testes
 
-Rodar todos os testes:
+Todos os testes usam dados mockados (padrão Spy: `TruckRepositorySpy`, `FipeClientSpy`, `TruckControllerSpy`, etc.) e **não criam banco de testes**, rodando com `SimpleTestCase`:
 
 ```bash
-python manage.py test
+python manage.py test --noinput
 ```
 
 Rodar com cobertura e gerar relatório HTML (`htmlcov/`):
 
 ```bash
-coverage run manage.py test
-coverage html
+python -m coverage run manage.py test --noinput
+python -m coverage html
 ```
 
-O relatório fica em `htmlcov/index.html`. Abra no navegador para ver a cobertura por arquivo.
+O relatório fica em `htmlcov/index.html`. O backend atinge **100% de coverage** em `apps/trucks` e `core` (consulte `[tool.coverage.run]` em `pyproject.toml` para exclusions).
 
 ```bash
 # Ver resumo no terminal (opcional)
-coverage report
+python -m coverage report
 ```
+
+> **Nota:** Use `python -m coverage` para garantir funcionamento mesmo sem o venv ativado no PATH.
 
 ---
 

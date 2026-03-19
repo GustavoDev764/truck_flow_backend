@@ -42,6 +42,9 @@ class TruckRepositorySpy(TruckRepository):
         self.saved.append(truck)
         return truck
 
+    def delete(self, truck_id: UUID) -> None:
+        self._by_id.pop(truck_id, None)
+
 
 class FipeClientSpy(FipeClient):
     """

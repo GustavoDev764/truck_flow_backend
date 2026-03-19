@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from unittest.mock import MagicMock, patch
 from uuid import UUID, uuid4
 
-from django.contrib.auth.models import Group, User
-from django.test import TestCase
+from django.test import SimpleTestCase
 from rest_framework.request import Request as DRFRequest
 from rest_framework.test import APIClient, APIRequestFactory
 
@@ -18,14 +18,28 @@ from apps.trucks.presentation.error_responses import TruckErrorResponseFactory
 from apps.trucks.presentation.exception_handler import truck_exception_handler
 from apps.trucks.presentation.response_factory import TruckResponseFactory
 from apps.trucks.presentation.serializers import TruckCreateSerializer, TruckUpdateSerializer
-from apps.trucks.presentation.views import TruckListCreateAPIView
+from apps.trucks.presentation.views import (
+    FipeBrandsAPIView,
+    FipeModelsAPIView,
+    FipeYearsAPIView,
+    TruckListCreateAPIView,
+)
 
 
-class _FakeController:
+def _make_user_spy() -> MagicMock:
+    """Spy de usuário autenticado no grupo cliente (sem banco)."""
+    user = MagicMock()
+    user.is_authenticated = True
+    user.groups.filter.return_value.exists.return_value = True
+    return user
+
+
+class TruckControllerSpy:
     def __init__(self, *, list_dtos: list[TruckDto]):
         self._list_dtos = list_dtos
         self.created_commands: list[CreateTruckCommand] = []
         self.updated_calls: list[tuple[UUID, UpdateTruckCommand]] = []
+        self.deleted_ids: list[UUID] = []
 
     def list_trucks(self) -> list[TruckDto]:
         return self._list_dtos
@@ -53,34 +67,32 @@ class _FakeController:
         )
 
     def delete_truck(self, truck_id: UUID) -> None:
-        pass
+        self.deleted_ids.append(truck_id)
 
 
-class PresentationViewsSpec(TestCase):
+class PresentationViewsSpec(SimpleTestCase):
     def setUp(self) -> None:
         self.client = APIClient()
         self.factory = APIRequestFactory()
-        grp, _ = Group.objects.get_or_create(name="cliente")
-        self.test_user = User.objects.create_user(username="test_cliente", password="test123")
-        self.test_user.groups.add(grp)
+        self.test_user = _make_user_spy()
         self.client.force_authenticate(user=self.test_user)
 
     def makeSut(
         self,
         *,
         list_dtos: list[TruckDto] | None = None,
-        controller_override: _FakeController | None = None,
-    ) -> _FakeController:
+        controller_override: TruckControllerSpy | None = None,
+    ) -> TruckControllerSpy:
         if controller_override is not None:
-            fake_controller = controller_override
+            controller_spy = controller_override
         else:
             list_dtos = list_dtos or []
-            fake_controller = _FakeController(list_dtos=list_dtos)
+            controller_spy = TruckControllerSpy(list_dtos=list_dtos)
 
         import apps.trucks.presentation.views as views_module
 
-        views_module._controller = fake_controller
-        return fake_controller
+        views_module._controller = controller_spy
+        return controller_spy
 
     def test_serializers_validation_license_plate_empty(self):
         serializer = TruckCreateSerializer(
@@ -205,7 +217,7 @@ class PresentationViewsSpec(TestCase):
         self.assertEqual(len(response.data["results"]), 5)
 
     def test_views_post_success_maps_command(self):
-        fake_controller = self.makeSut(list_dtos=[])
+        controller_spy = self.makeSut(list_dtos=[])
 
         payload = {
             "license_plate": "ABC-1234",
@@ -217,15 +229,15 @@ class PresentationViewsSpec(TestCase):
         response = self.client.post("/api/trucks/", payload, format="json")
         self.assertEqual(response.status_code, 201)
 
-        self.assertEqual(len(fake_controller.created_commands), 1)
-        cmd = fake_controller.created_commands[0]
+        self.assertEqual(len(controller_spy.created_commands), 1)
+        cmd = controller_spy.created_commands[0]
         self.assertEqual(cmd.license_plate, "ABC-1234")
         self.assertEqual(cmd.brand, "Scania")
         self.assertEqual(cmd.model, "FH 540")
         self.assertEqual(cmd.manufacturing_year, 2020)
 
     def test_views_put_success_maps_update_command(self):
-        fake_controller = self.makeSut(list_dtos=[])
+        controller_spy = self.makeSut(list_dtos=[])
 
         truck_id = uuid4()
         payload = {"brand": "Scania", "model": "FH 540", "manufacturing_year": 2020}
@@ -233,15 +245,15 @@ class PresentationViewsSpec(TestCase):
         response = self.client.put(f"/api/trucks/{truck_id}/", payload, format="json")
         self.assertEqual(response.status_code, 200)
 
-        self.assertEqual(len(fake_controller.updated_calls), 1)
-        called_id, cmd = fake_controller.updated_calls[0]
+        self.assertEqual(len(controller_spy.updated_calls), 1)
+        called_id, cmd = controller_spy.updated_calls[0]
         self.assertEqual(called_id, truck_id)
         self.assertEqual(cmd.brand, "Scania")
         self.assertEqual(cmd.model, "FH 540")
         self.assertEqual(cmd.manufacturing_year, 2020)
 
     def test_exception_handler_duplicate_in_post(self):
-        class _ErrorController(_FakeController):
+        class _ErrorController(TruckControllerSpy):
             def create_truck(self, command: CreateTruckCommand) -> TruckDto:
                 raise DuplicateLicensePlateError(command.license_plate)
 
@@ -258,7 +270,7 @@ class PresentationViewsSpec(TestCase):
         self.assertEqual(resp.status_code, 409)
 
     def test_exception_handler_truck_not_found_in_put(self):
-        class _ErrorController(_FakeController):
+        class _ErrorController(TruckControllerSpy):
             def update_truck(self, *, truck_id, command: UpdateTruckCommand) -> TruckDto:
                 raise TruckNotFoundError(truck_id)
 
@@ -268,3 +280,80 @@ class PresentationViewsSpec(TestCase):
         payload = {"brand": "Scania", "model": "FH 540", "manufacturing_year": 2020}
         resp = self.client.put(f"/api/trucks/{truck_id}/", payload, format="json")
         self.assertEqual(resp.status_code, 404)
+
+    def test_views_delete_success(self):
+        controller_spy = self.makeSut(list_dtos=[])
+        truck_id = uuid4()
+
+        response = self.client.delete(f"/api/trucks/{truck_id}/")
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(controller_spy.deleted_ids, [truck_id])
+
+    @patch("apps.trucks.presentation.views._fipe_client")
+    def test_fipe_brands_returns_data(self, mock_fipe):
+        mock_fipe.get_brands.return_value = [{"id": "1", "name": "Scania"}]
+        raw_request = self.factory.get("/api/fipe/brands/")
+        raw_request.user = self.test_user
+        from rest_framework.request import Request as DRFRequest
+
+        request = DRFRequest(raw_request)
+        response = FipeBrandsAPIView().get(request)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data, [{"id": "1", "name": "Scania"}])
+
+    @patch("apps.trucks.presentation.views._fipe_client")
+    def test_fipe_models_returns_data(self, mock_fipe):
+        mock_fipe.get_models.return_value = [{"id": "1", "name": "FH 540"}]
+        raw_request = self.factory.get("/api/fipe/brands/1/models/")
+        raw_request.user = self.test_user
+        from rest_framework.request import Request as DRFRequest
+
+        request = DRFRequest(raw_request)
+        response = FipeModelsAPIView().get(request, brand_id="1")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data, [{"id": "1", "name": "FH 540"}])
+
+    @patch("apps.trucks.presentation.views._fipe_client")
+    def test_fipe_years_returns_data(self, mock_fipe):
+        mock_fipe.get_years.return_value = [{"year": 2020}]
+        raw_request = self.factory.get("/api/fipe/brands/1/models/2/years/")
+        raw_request.user = self.test_user
+        from rest_framework.request import Request as DRFRequest
+
+        request = DRFRequest(raw_request)
+        response = FipeYearsAPIView().get(request, brand_id="1", model_id="2")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data, [{"year": 2020}])
+
+    @patch("apps.trucks.presentation.views._fipe_client")
+    def test_fipe_brands_handles_exception(self, mock_fipe):
+        mock_fipe.get_brands.side_effect = RuntimeError("FIPE indisponível")
+        raw_request = self.factory.get("/api/fipe/brands/")
+        raw_request.user = self.test_user
+        from rest_framework.request import Request as DRFRequest
+
+        request = DRFRequest(raw_request)
+        response = FipeBrandsAPIView().get(request)
+        self.assertEqual(response.status_code, 500)
+
+    @patch("apps.trucks.presentation.views._fipe_client")
+    def test_fipe_models_handles_exception(self, mock_fipe):
+        mock_fipe.get_models.side_effect = RuntimeError("FIPE indisponível")
+        raw_request = self.factory.get("/api/fipe/brands/1/models/")
+        raw_request.user = self.test_user
+        from rest_framework.request import Request as DRFRequest
+
+        request = DRFRequest(raw_request)
+        response = FipeModelsAPIView().get(request, brand_id="1")
+        self.assertEqual(response.status_code, 500)
+
+    @patch("apps.trucks.presentation.views._fipe_client")
+    def test_fipe_years_handles_exception(self, mock_fipe):
+        mock_fipe.get_years.side_effect = RuntimeError("FIPE indisponível")
+        raw_request = self.factory.get("/api/fipe/brands/1/models/2/years/")
+        raw_request.user = self.test_user
+        from rest_framework.request import Request as DRFRequest
+
+        request = DRFRequest(raw_request)
+        response = FipeYearsAPIView().get(request, brand_id="1", model_id="2")
+        self.assertEqual(response.status_code, 500)

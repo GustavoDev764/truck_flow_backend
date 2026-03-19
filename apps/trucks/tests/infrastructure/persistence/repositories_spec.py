@@ -125,3 +125,14 @@ class PersistenceRepositorySpec(SimpleTestCase):
             )
             with self.assertRaises(IntegrityError):
                 DjangoTruckRepository.save.__wrapped__(repo, base)
+
+    def test_delete_filters_by_id(self):
+        repo = DjangoTruckRepository()
+        truck_id = uuid4()
+
+        with mock.patch(
+            "apps.trucks.infrastructure.persistence.repositories.TruckModel"
+        ) as TruckModelMock:
+            repo.delete(truck_id)
+            TruckModelMock.objects.filter.assert_called_once_with(id=truck_id)
+            TruckModelMock.objects.filter.return_value.delete.assert_called_once()

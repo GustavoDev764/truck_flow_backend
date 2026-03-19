@@ -44,11 +44,13 @@ class TruckControllerSpec(SimpleTestCase):
                 fipe_price=Decimal("3.00"),
             )
         )
+        delete_use_case = SimpleNamespace(execute=lambda truck_id: None)
 
         controller = TruckController(
             list_trucks_use_case=list_use_case,
             create_truck_use_case=create_use_case,
             update_truck_use_case=update_use_case,
+            delete_truck_use_case=delete_use_case,
         )
 
         dtos = controller.list_trucks()
@@ -65,3 +67,5 @@ class TruckControllerSpec(SimpleTestCase):
         updated = controller.update_truck(truck_id=truck_id, command=update_cmd)
         self.assertEqual(updated.id, truck_id)
         self.assertEqual(updated.brand, "Volvo")
+
+        controller.delete_truck(truck_id)
