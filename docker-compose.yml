@@ -1,0 +1,40 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: truckflow
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d truckflow"]
+      interval: 3s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: .
+    ports:
+      - "${HOST_PORT:-3000}:3000"
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: truckflow
+      DB_PROVIDER: postgres
+      HOST_PORT: 3000
+      JWT_SECRET: ${JWT_SECRET:-django-insecure-change-in-production}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      SUPERUSER_USERNAME: ${SUPERUSER_USERNAME:-admin}
+      SUPERUSER_EMAIL: ${SUPERUSER_EMAIL:-admin@truckflow.com}
+      SUPERUSER_PASSWORD: ${SUPERUSER_PASSWORD:-admin123}
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

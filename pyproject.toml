@@ -1,0 +1,61 @@
+[project]
+name = "truckflow-backend"
+version = "0.1.0"
+requires-python = ">=3.11"
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+    | \.venv
+    | __pycache__
+    | \.mypy_cache
+    | migrations
+    | htmlcov
+)/
+'''
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["."]
+exclude = [
+    ".git",
+    ".venv",
+    "__pycache__",
+    "migrations",
+    "htmlcov",
+    "node_modules",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort (import sorting)
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "ARG",    # flake8-unused-arguments
+    "ERA",    # eradicate (remove commented-out code)
+]
+ignore = [
+    "E501",   # line too long (black handles)
+    "E402",   # module level import not at top (Django BASE_DIR pattern)
+    "B008",   # do not perform function calls in argument defaults
+    "ARG001", # unused function argument (common in Django/signals)
+    "ARG002", # unused method argument (Django views, management commands)
+    "F403",   # from x import * (Django settings pattern)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["apps.accounts", "apps.trucks", "config", "core"]
+
+[tool.ruff.format]
+quote-style = "double"
+skip-magic-trailing-comma = false
+line-ending = "auto"

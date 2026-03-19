@@ -1,0 +1,11 @@
+djangorestframework>=3.15
+djangorestframework-simplejwt>=5.3
+requests>=2.31
+python-dotenv
+psycopg2-binary
+drf-spectacular
+django-cors-headers>=4.0
+
+# Dev: formatação e lint
+black>=24.0
+ruff>=0.8
