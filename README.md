@@ -270,8 +270,24 @@ black .
 
 ### Testes
 
+Rodar todos os testes:
+
 ```bash
 python manage.py test
+```
+
+Rodar com cobertura e gerar relatório HTML (`htmlcov/`):
+
+```bash
+coverage run manage.py test
+coverage html
+```
+
+O relatório fica em `htmlcov/index.html`. Abra no navegador para ver a cobertura por arquivo.
+
+```bash
+# Ver resumo no terminal (opcional)
+coverage report
 ```
 
 ---

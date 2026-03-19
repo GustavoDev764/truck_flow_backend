@@ -6,6 +6,7 @@ psycopg2-binary
 drf-spectacular
 django-cors-headers>=4.0
 
-# Dev: formatação e lint
+# Dev: formatação, lint e testes
 black>=24.0
 ruff>=0.8
+coverage>=7.0
